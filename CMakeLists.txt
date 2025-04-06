@@ -23,11 +23,54 @@ FetchContent_Declare(
     GIT_TAG v3.12.2  # Using a specific version tag
 )
 
+# Download and configure GLAD for OpenGL function loading
+FetchContent_Declare(
+    glad
+    GIT_REPOSITORY https://github.com/Dav1dde/glad.git
+    GIT_TAG v0.1.36
+)
+
+
+# Include ImGui module
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.89.9
+)
+
 # Make the dependencies available
-FetchContent_MakeAvailable(glm entt)
+FetchContent_MakeAvailable(glm entt glad imgui)
+
+find_package(OpenGL REQUIRED)
+find_package(glfw3 REQUIRED)
+
+FetchContent_GetProperties(imgui)
+if(NOT imgui_POPULATED)
+    FetchContent_Populate(imgui)
+endif()
+
+# Create ImGui library
+add_library(imgui STATIC
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_demo.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+)
+
+# Get GLFW include directories and pass them to ImGui
+get_target_property(GLFW_INCLUDE_DIRS glfw INTERFACE_INCLUDE_DIRECTORIES)
+
+target_include_directories(imgui PUBLIC
+    ${imgui_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}/backends
+    ${GLFW_INCLUDE_DIRS}  # Add GLFW include directories
+)
 
 # Create the executable
 add_executable(${PROJECT_NAME} src/main.cpp)
 
 # Link the libraries
-target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm EnTT::EnTT) 
+target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm EnTT::EnTT glad imgui glfw) 

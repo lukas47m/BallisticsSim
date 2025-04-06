@@ -4,10 +4,10 @@ REM I did not test .bat, I tested only .sh
 setlocal enabledelayedexpansion
 
 REM Create build directory if it doesn't exist
-if not exist build mkdir build
+if not exist output mkdir output
 
 REM Navigate to build directory
-cd build
+cd output
 
 REM Configure with CMake
 cmake ..

@@ -7,16 +7,17 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
 #include <limits>
+#include <functional>
 
 class Simulation {
     private:
     static double HIT_TRASHOLD;
     static double MAX_SIMULATION_TIME;
     static double AIR_RESISTANCE;
-    static glm::dvec3 UP_VECTOR;
     static uint32_t MAX_TRIES;
 
     public:
+    static glm::dvec3 UP_VECTOR;
         enum ShotResultEnum{
             HIT,
             TOO_HIGH,
@@ -38,12 +39,22 @@ class Simulation {
             uint32_t tries;
         };
 
+        Simulation(){}
+        void init(const glm::dvec3& shooter_position, const glm::dvec3& target_position, double shoot_speed, double shoot_height, double delta_time){
+            this->shooter_position = shooter_position;
+            this->target_position = target_position;
+            this->shoot_speed = shoot_speed;
+            this->shoot_height = shoot_height;
+            this->delta_time = delta_time;
+        }
+
         Simulation(const glm::dvec3& shooter_position, const glm::dvec3& target_position, double shoot_speed, double shoot_height, double delta_time) :
          shooter_position(shooter_position), target_position(target_position), shoot_speed(shoot_speed), shoot_height(shoot_height), delta_time(delta_time) {}   
         
         virtual ~Simulation(){}
 
-        StrategyResult find_angle_strategy(void (*callback)(const ShotResult& result, const double& angle) = nullptr){
+        StrategyResult find_angle_strategy(std::function<void(const ShotResult& result, const double& angle)> callback = nullptr,
+                                            std::function<void(const Position& position, const double& time)> callback2 = nullptr){
             StrategyResult best_result = {{ShotResultEnum::NO_TIME, std::numeric_limits<double>::max(), 0.0}, 0.0, 0};
 
             glm::dvec3 direction = glm::normalize(target_position - shooter_position);
@@ -56,8 +67,8 @@ class Simulation {
             uint32_t tries = 0;
             while(tries < MAX_TRIES){
                 tries++;
-                ShotResult result = simulateShot(angle);
-
+                ShotResult result = simulateShot(angle, callback2);
+                
                 if(callback){
                     callback(result, angle);
                 }
@@ -96,7 +107,10 @@ class Simulation {
         }
         
 
-        ShotResult simulateShot(double angle){
+        ShotResult simulateShot(double angle, std::function<void(const Position& position, const double& time)> callback = nullptr){
+            if(delta_time <= 0.0){
+                return {ShotResultEnum::NO_TIME, 0.0, 0.0};
+            }
             double time = 0.0;
 
             entt::registry registry;
@@ -124,6 +138,10 @@ class Simulation {
 
                 const Position& position = registry.get<Position>(projectile);
 
+                if(callback){
+                    callback(position, time);
+                }
+
                 glm::dvec3 AB = position.position - position.previous_position;
                 glm::dvec3 AP = target_position - position.previous_position;
 
@@ -137,7 +155,8 @@ class Simulation {
                 }
                 //I assume that I want to hit the target as directly as possible, without considering a higher arc trajectory.
                 if(t<1.0){
-                  if(nearest_point.y > target_position.y){
+                
+                  if(glm::dot(target_position - nearest_point, UP_VECTOR) < 0.0){
                         return {ShotResultEnum::TOO_HIGH, distance, time};
                     }
                     return {ShotResultEnum::TOO_LOW, distance, time};
