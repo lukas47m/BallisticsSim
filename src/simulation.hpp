@@ -53,6 +53,8 @@ class Simulation {
         
         virtual ~Simulation(){}
 
+
+        //good for air density 0
         StrategyResult find_angle_strategy(std::function<void(const ShotResult& result, const double& angle)> callback = nullptr,
                                             std::function<void(const Position& position, const double& time)> callback2 = nullptr){
             StrategyResult best_result = {{ShotResultEnum::NO_TIME, std::numeric_limits<double>::max(), 0.0}, 0.0, 0};
@@ -68,7 +70,7 @@ class Simulation {
             while(tries < MAX_TRIES){
                 tries++;
                 ShotResult result = simulateShot(angle, callback2);
-                
+
                 if(callback){
                     callback(result, angle);
                 }
@@ -85,6 +87,7 @@ class Simulation {
                     max_angle = angle;
                 }
 
+                
                 if(result.result == ShotResultEnum::TOO_LOW){
                     min_angle = angle;
                     if(best_result.best_result.result == ShotResultEnum::TOO_LOW){
@@ -102,6 +105,81 @@ class Simulation {
                 }
 
                 angle = (min_angle + max_angle) / 2.0;
+            }
+            return best_result;
+        }
+
+        StrategyResult find_angle_strategy2(std::function<void(const ShotResult& result, const double& angle)> callback = nullptr,
+                                            std::function<void(const Position& position, const double& time)> callback2 = nullptr){
+            StrategyResult best_result = {{ShotResultEnum::NO_TIME, std::numeric_limits<double>::max(), 0.0}, 0.0, 0};
+
+            glm::dvec3 direction = glm::normalize(target_position - shooter_position);
+            double dotProduct = glm::dot(glm::normalize(direction), UP_VECTOR);
+            double max_angle = glm::degrees(glm::acos(dotProduct));
+            double min_angle = 0.0;
+            double angle = (max_angle - min_angle) / 2.0;
+
+
+            ShotResult result_max = simulateShot(max_angle, callback2);
+            if(result_max.result == ShotResultEnum::HIT){
+                    return {result_max, max_angle, 1};
+            }
+            ShotResult result_min = simulateShot(min_angle, callback2);
+            if(result_min.result == ShotResultEnum::HIT){
+                return {result_min, min_angle, 1};
+            }
+
+            ShotResult result_mid = simulateShot(angle, callback2);
+            if(callback){
+                callback(result_mid, angle);
+            }
+            if(result_mid.result == ShotResultEnum::HIT){
+                return {result_mid, angle, 1};
+            }
+            
+            uint32_t tries = 1;
+            while(tries < MAX_TRIES){
+                tries++;
+
+                double angle_max_mid = (max_angle + angle) / 2.0;
+                ShotResult result_max_mid = simulateShot(angle_max_mid, callback2);
+                if(result_max_mid.result == ShotResultEnum::HIT){
+                    return {result_max_mid, angle_max_mid, tries};
+                }
+                double angle_min_mid = (min_angle + angle) / 2.0;
+                ShotResult result_min_mid = simulateShot(angle_min_mid, callback2);
+                if(result_min_mid.result == ShotResultEnum::HIT){
+                    return {result_min_mid, angle_min_mid, tries};
+                }
+
+
+                if(result_max_mid.distance < result_mid.distance){
+                    result_min = result_mid;
+                    result_mid = result_max_mid;
+                    min_angle = angle;
+                } else if(result_min_mid.distance < result_mid.distance){
+                    result_max = result_mid;
+                    result_mid = result_min_mid;
+                    max_angle = angle;
+                } else {
+                    result_min = result_min_mid;
+                    result_max = result_max_mid;
+                    min_angle = angle_min_mid;
+                    max_angle = angle_max_mid;
+                }
+
+                if(callback){
+                    callback(result_mid, angle);
+                }
+                if(best_result.best_result.distance > result_mid.distance){
+                    best_result = {result_mid, angle, tries};
+                }
+
+                if(max_angle - min_angle < 0.000000001){
+                    return best_result;
+                }
+
+                angle = (max_angle + min_angle) / 2.0;
             }
             return best_result;
         }
@@ -156,7 +234,8 @@ class Simulation {
                 //I assume that I want to hit the target as directly as possible, without considering a higher arc trajectory.
                 if(t<1.0){
                 
-                  if(glm::dot(target_position - nearest_point, UP_VECTOR) < 0.0){
+                    //if air density is not 0, can be wrong
+                    if(glm::dot(target_position - nearest_point, UP_VECTOR) < 0.0){
                         return {ShotResultEnum::TOO_HIGH, distance, time};
                     }
                     return {ShotResultEnum::TOO_LOW, distance, time};

@@ -168,8 +168,6 @@ class GUI {
             ImGui::Text("Simulation Parameters:");
             ImGui::SliderFloat3("Shooter Position", glm::value_ptr(simulation_parameters.shooter_position.position), -100.0f, 100.0f);
             ImGui::SliderFloat3("Target Position", glm::value_ptr(simulation_parameters.target_position.position), -100.0f, 100.0f);
-            //ImGui::SliderFloat3("Shooter Position", glm::value_ptr(simulation_parameters.shooter_position));
-            //ImGui::SliderFloat3("Target Position", glm::value_ptr(simulation_parameters.target_position));
             ImGui::SliderFloat("Shoot Speed", &simulation_parameters.shoot_speed, 1.0f, 500.0f);
             ImGui::SliderFloat("Shoot Height", &simulation_parameters.shoot_height, 0.001f, 10.0f);
             ImGui::SliderFloat("Time Step", &simulation_parameters.delta_time, 0.0001f, 1.0f);
@@ -178,7 +176,7 @@ class GUI {
             if (ImGui::Button("Find Angle")) {
                 simulation_thread = std::thread([this](){
                     simulation.init(simulation_parameters.shooter_position.position, simulation_parameters.target_position.position, simulation_parameters.shoot_speed, simulation_parameters.shoot_height, simulation_parameters.delta_time);
-                    lastResult = simulation.find_angle_strategy();
+                    lastResult = simulation.find_angle_strategy2();
                     hasResult = true;
                 });
                 simulation_thread.detach();

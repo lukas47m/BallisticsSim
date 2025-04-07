@@ -93,7 +93,7 @@ TEST_CASE("Shoot Simulation Test", "[simulation]") {
     // ...
 }
 
-TEST_CASE("Simulation Strategy Test", "[simulation]") {
+TEST_CASE("Simulation Strategy 1 Test", "[simulation]") {
     
     Physics::AIR_DENSITY = 0.0;
 
@@ -135,6 +135,34 @@ TEST_CASE("Simulation Strategy Test", "[simulation]") {
         glm::dvec3 initial_position = glm::dvec3(0.0, 0.0, 0.0);
         glm::dvec3 target_position = glm::dvec3(0.0, 10.0, 0.0);
         Simulation simulation(initial_position, target_position, 0.1, 10.0, step_time);
+        auto result = simulation.find_angle_strategy();
+        REQUIRE(result.best_result.result != Simulation::ShotResultEnum::HIT);
+    }
+    // ...
+}
+
+TEST_CASE("Simulation Strategy 2 Test", "[simulation]") {
+    
+    double step_time = 0.01;
+
+    Simulation::HIT_TRASHOLD = 0.0000001;
+    Simulation::MAX_SIMULATION_TIME = 100.0;
+    Physics::AIR_DENSITY = 1.0;
+
+
+    SECTION("hit"){
+        Physics::GRAVITY = glm::dvec3(0.0, -10.0, 0.0);
+        glm::dvec3 initial_position = glm::dvec3(0.0, 0.0, 0.0);
+        glm::dvec3 target_position = glm::dvec3(10.0, 10.0, 10.0);
+        Simulation simulation(initial_position, target_position, 100.0, 10.0, step_time*0.01);
+        auto result = simulation.find_angle_strategy();
+        REQUIRE(result.best_result.result == Simulation::ShotResultEnum::HIT);
+    }
+    SECTION("no hit"){
+        Physics::GRAVITY = glm::dvec3(0.0, -10.0, 0.0);
+        glm::dvec3 initial_position = glm::dvec3(0.0, 0.0, 0.0);
+        glm::dvec3 target_position = glm::dvec3(10.0, 0.0, 0.0);
+        Simulation simulation(initial_position, target_position, 10.0, 10.0, step_time*0.01);
         auto result = simulation.find_angle_strategy();
         REQUIRE(result.best_result.result != Simulation::ShotResultEnum::HIT);
     }
